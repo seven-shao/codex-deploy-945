@@ -95,10 +95,14 @@ code{word-break:break-all;overflow-wrap:anywhere}
   </div>
 </div>
 <div id="cdxToast" class="cdx-toast"></div>
+<!-- 【V1.0.0.969 用户要求】签发时不再填写任何「上游 Key」：
+     去掉「上游 Key 来源」下拉与「你的上游 Key」输入行，
+     统一由服务器「平台 Key 池」按模型名自动选上游 Key（含 DeepSeek / 智谱 / 通义 / Kimi / 豆包 / 混元 等已配 Key 的平台）。 -->
 <div class="wrap">
   <h1>CODEX 一键签发控制台</h1>
-  <div class="sub">填一次客户与计费，点一个按钮 —— <b>中转 Key 一次性生成</b>，生成完直接复制发给客户。</div>
+  <div class="sub">填一次客户与计费，点一个按钮 —— <b>中转 Key 一次性生成</b>，生成完直接复制发给客户。<b>不用填上游 Key</b>：服务器平台 Key 池按模型名自动分发。</div>
 
+<!-- 【V1.0.0.970 用户要求】删除「⑥ 单独打开原页面（功能完全一样）」整张卡片（连同通往独立 Key 管理页的入口），界面不再出现该区块 -->
   <!-- 【V1.0.0.968 用户要求】把左侧的「客户与计费」整块搬到右上，与「管理口令」并排；右侧下方仍是原来的客户 Key 表与用量流水 -->
   <div class="grid">
     <div>
@@ -163,16 +167,10 @@ code{word-break:break-all;overflow-wrap:anywhere}
         </div>
         <div class="sep"></div>
         <div class="row">
-          <label>上游 Key 来源</label>
-          <select id="upMode">
-            <option value="">透传（用客户自带的上游 Key，不花你的钱）</option>
-            <option value="custom">映射（用你指定的上游 Key，花你的钱）</option>
-          </select>
+          <label>上游来源</label>
+          <span class="tag ok">平台统一 Key 池 · 无需填写</span>
         </div>
-        <div class="row" id="rowUpKey" style="display:none">
-          <label>你的上游 Key</label>
-          <input id="upKey" class="dots" placeholder="sk-..." style="min-width:360px">
-        </div>
+        <div class="hint">服务器已内置各大模型平台的可用上游 Key，按模型名自动分发；签发时不用再填任何上游 Key。</div>
         <div class="row">
           <label>配额 token（0=不限）</label>
           <input id="quota" type="number" value="0" style="min-width:140px">
@@ -203,13 +201,6 @@ code{word-break:break-all;overflow-wrap:anywhere}
         </div>
         <div id="useOut" class="hint">填 Key 后点「查询」；可按日期范围筛选，也可导出 CSV。生成 Key 后会自动带进来。</div>
       </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>⑥ 单独打开原页面（功能完全一样）</h2>
-    <div class="row">
-      <a href="keys-admin.html" target="_blank" style="color:#8ab4ff">打开完整 Key 管理 ↗</a>
     </div>
   </div>
 </div>
@@ -311,7 +302,7 @@ $('iMode').onchange = function(){
   else if (m === 'year') $('iDays').value = 365;
   else if (m === 'forever') $('iDays').value = 0;
 };
-$('upMode').onchange = function(){ $('rowUpKey').style.display = this.value === 'custom' ? 'flex' : 'none'; };
+/* 【V1.0.0.969】上游 Key 已由平台统一管理，不再有「上游 Key 来源」下拉与输入框 */
 
 $('btnNewCust').onclick = function(){ var b = $('newCustBox'); b.style.display = (b.style.display === 'none' || !b.style.display) ? 'flex' : 'none'; };
 $('btnSaveCust').onclick = async function(){
@@ -335,7 +326,6 @@ $('btnMake').onclick = async function(){
   var days = parseInt($('iDays').value || '0', 10);
   var tokens = parseInt($('topup').value || '0', 10);
   var quota = $('quota').value.trim() || '0';
-  var upMode = $('upMode').value;
   var projects = Array.prototype.slice.call($('projBox').querySelectorAll('input[type=checkbox]:checked')).map(function(i){ return i.value; });
 
   this.disabled = true; setMsg($('msgMake'), '正在生成…', null);
@@ -368,12 +358,12 @@ $('btnMake').onclick = async function(){
       body: JSON.stringify({
         name: custName,
         key: (lic.code || ''),
-        upstreamKey: upMode === 'custom' ? $('upKey').value.trim() : '',
+        upstreamKey: '',   // V1.0.0.969：留空 = 中转站按模型名用平台统一 Key 池
         licenseId: String(lic.license_id),
         quotaTokens: quota
       })
     });
-    steps.push('✔ 中转 Key 已生成并登记（' + (upMode === 'custom' ? '映射上游 Key' : '透传客户自带 Key') + '）');
+    steps.push('✔ 中转 Key 已生成并登记（上游走平台统一 Key 池，无需填 Key）');
 
     /* 展示 */
     var host = location.origin;
