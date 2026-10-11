@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CODEX 一键签发控制台</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b26;--line:#273044;--fg:#e6edf7;--dim:#9fb0c9;--accent:#3b82f6;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.65 "Microsoft YaHei","Segoe UI",Arial,sans-serif}
+  .wrap{max-width:1760px;margin:0 auto;padding:20px 18px 70px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--dim);font-size:12.5px;margin-bottom:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+  .card h2{font-size:14.5px;margin:0 0 10px;color:#cfe0ff;font-weight:600;display:flex;align-items:center;gap:8px}
+  .card h2 .tool{margin-left:auto}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:8px}
+  label{color:var(--dim);font-size:12.5px}
+  input,select{background:#0f1622;border:1px solid var(--line);color:var(--fg);border-radius:7px;padding:7px 10px;font-size:13.5px;outline:none;min-width:110px}
+  input:focus,select:focus{border-color:var(--accent)}
+  input::placeholder{color:#5b6b85}
+  input.dots{-webkit-text-security:disc}
+  button{background:var(--accent);border:0;color:#fff;border-radius:7px;padding:8px 14px;font-size:13.5px;cursor:pointer}
+  button:hover{filter:brightness(1.1)}
+  button.ghost{background:#243044;color:#cfe0ff}
+  button.big{padding:11px 22px;font-size:15px;font-weight:600}
+  button.small{padding:4px 10px;font-size:12.5px}
+  code{background:#0f1622;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12.5px;color:#dbe7ff}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:normal;word-break:break-word;overflow-wrap:anywhere;vertical-align:top}
+code{word-break:break-all;overflow-wrap:anywhere}
+  th{color:var(--dim);font-weight:500;font-size:12.5px}
+  .msg{font-size:12.5px;margin-top:6px;color:var(--dim)}
+  .msg.ok{color:#8ef0b0}.msg.bad{color:#ff9c9c}
+  .out{white-space:pre-wrap;word-break:break-all;overflow-wrap:anywhere;background:#0b1119;border:1px dashed #2f6feb;border-radius:8px;padding:12px;font-family:Consolas,monospace;font-size:13px;line-height:1.8;color:#dbe7ff;display:none}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  @media (max-width:1440px){.grid{grid-template-columns:1fr}}
+  #keyList,#licList,#useOut{overflow-x:auto;max-width:100%}
+  #keyList th,#keyList td,#licList th,#licList td,#useOut th,#useOut td{padding:6px 7px;font-size:12.5px}
+  .tag{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;border:1px solid var(--line);color:var(--dim)}
+  .tag.ok{color:#8ef0b0;border-color:#1f4d33;background:#10231a}
+  .tag.bad{color:#ffb4b4;border-color:#5a2323;background:#2a1414}
+  .hint{color:#7b8798;font-size:12px;margin-top:4px}
+  .chk{display:inline-flex;align-items:center;gap:5px;margin-right:12px;font-size:13px;color:var(--fg)}
+  .sep{height:1px;background:var(--line);margin:10px 0}
+  /* 【V1.0.0.957】两个表格每行末尾的 4 个操作按钮：看码 / 编辑 / 停用 / 删除 */
+  .act{white-space:nowrap}
+  .act button{margin:0 3px 0 0;padding:3px 9px;font-size:12px}
+  .act button.danger{background:#3a1d1d;color:#ffb4b4}
+  .act button.warnb{background:#3a2f16;color:#ffd88a}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>CODEX 一键签发控制台</h1>
+  <div class="sub">填一次客户与计费，点一个按钮 —— <b>授权码 + 中转 Key 一次性全部生成</b>，生成完直接复制发给客户。</div>
+
+  <div class="card">
+    <h2>① 管理口令 <span class="tool"><span id="conn" class="tag">未连接</span></span></h2>
+    <div class="row">
+      <input id="tok" class="dots" placeholder="管理口令（两处通用）" style="min-width:320px">
+      <button id="btnEyeTok" class="ghost small" type="button">显示口令</button>
+      <button id="btnConn">连接</button>
+      <button id="btnForget" class="ghost small" type="button">忘记口令</button>
+    </div>
+    <div class="hint">口令同时用于「授权后台」与「中转站」，填一次即可；勾选下方「记住口令」后下次自动连接。</div>
+    <div class="row" style="margin-top:6px">
+      <label class="chk"><input type="checkbox" id="remember" checked style="min-width:auto"> 记住口令（存在本机浏览器）</label>
+    </div>
+    <div id="msgTop" class="msg"></div>
+  </div>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>② 客户与计费（生成一次，两个都出）</h2>
+        <div class="row">
+          <label>客户</label>
+          <select id="iCust" style="min-width:240px"><option value="">（点连接后加载）</option></select>
+          <button id="btnNewCust" class="ghost small" type="button">+ 新增客户</button>
+        </div>
+        <div id="newCustBox" class="row" style="display:none">
+          <input id="nName" placeholder="客户名称">
+          <input id="nContact" placeholder="联系方式（手机/微信）">
+          <button id="btnSaveCust" class="small">保存客户</button>
+        </div>
+        <div class="sep"></div>
+        <div class="row">
+          <label>计费</label>
+          <select id="iMode">
+            <option value="month">按月</option>
+            <option value="year">按年</option>
+            <option value="forever">永久</option>
+            <option value="token">按 TOKEN 额度</option>
+          </select>
+          <label>有效天数</label>
+          <input id="iDays" type="number" value="30" style="min-width:110px">
+          <span class="hint">0 = 无有效期（无限期）</span>
+        </div>
+        <div class="row">
+          <label>可换机间隔(分钟)</label>
+          <input id="iSwitch" type="number" value="30" style="min-width:90px">
+          <label>累计换机上限(0=不限)</label>
+          <input id="iMax" type="number" value="0" style="min-width:90px">
+          <label>备注</label>
+          <input id="iNote" placeholder="可选">
+        </div>
+        <div class="row">
+          <label>可用项目</label>
+          <span id="projBox"><span class="hint">（点连接后加载）</span></span>
+        </div>
+        <div class="sep"></div>
+        <div class="row">
+          <label>上游 Key 来源</label>
+          <select id="upMode">
+            <option value="">透传（用客户自带的上游 Key，不花你的钱）</option>
+            <option value="custom">映射（用你指定的上游 Key，花你的钱）</option>
+          </select>
+        </div>
+        <div class="row" id="rowUpKey" style="display:none">
+          <label>你的上游 Key</label>
+          <input id="upKey" class="dots" placeholder="sk-..." style="min-width:360px">
+        </div>
+        <div class="row">
+          <label>配额 token（0=不限）</label>
+          <input id="quota" type="number" value="0" style="min-width:140px">
+          <label>同时入账 token（可选）</label>
+          <input id="topup" type="number" value="0" style="min-width:140px">
+          <span class="hint">按月/按年计费的客户需先入账额度才能激活</span>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button id="btnMake" class="big">⚡ 一键生成授权码 + Key</button>
+          <span id="msgMake" class="msg"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>③ 生成结果 <span class="tool"><button id="btnCopyAll" class="ghost small" type="button" style="display:none">复制全部（发客户）</button></span></h2>
+        <div id="out" class="out"></div>
+        <div id="outEmpty" class="hint">还没有生成；点上面的「⚡ 一键生成授权码 + Key」。</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2><span id="keyHead">④ 已有 Key</span> <span class="tool"><button id="btnReload" class="ghost small" type="button">刷新</button><button id="btnEyeKeys" class="ghost small" type="button">显示 Key</button></span></h2>
+        <div id="keyList"><div class="hint">（点连接后加载）</div></div>
+      </div>
+      <div class="card">
+        <h2>⑤ 客户与授权</h2>
+        <div id="licList"><div class="hint">（点连接后加载）</div></div>
+      </div>
+      <div class="card">
+        <h2>⑦ 用量流水 <span class="tool"><button id="btnUsageCsv" class="ghost small" type="button" style="display:none">导出 CSV</button></span></h2>
+        <div class="row">
+          <input id="uCode" placeholder="授权码 或 授权ID" style="min-width:230px">
+          <label>起</label><input id="uFrom" type="date" style="min-width:150px">
+          <label>止</label><input id="uTo" type="date" style="min-width:150px">
+          <button id="btnUsage" class="small">查询</button>
+          <button id="btnUsageClear" class="ghost small" type="button">清空条件</button>
+          <span id="msgUsage" class="msg"></span>
+        </div>
+        <div id="useOut" class="hint">填授权码（或授权ID）后点「查询」；可按日期范围筛选，也可导出 CSV。生成授权后会自动带进来。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>⑥ 单独打开原页面（功能完全一样）</h2>
+    <div class="row">
+      <a href="/codex/admin" target="_blank" style="color:#8ab4ff">打开完整授权后台 ↗</a>
+      <a href="keys-admin.html" target="_blank" style="color:#8ab4ff;margin-left:16px">打开完整 Key 管理 ↗</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = function(id){ return document.getElementById(id); };
+const KEY_TOK = 'relayAdminToken', ADM_TOK = 'codex_admin_tok';
+const RELAY_BASE = '/relay/v1';                 // 客户填的中转地址（服务器地址 + /relay/v1）
+let TOK = localStorage.getItem(ADM_TOK) || localStorage.getItem(KEY_TOK) || '';
+let CUSTOMERS = [], PROJECTS = [], REVEAL = 0;
+
+function setMsg(el, t, ok){ el.textContent = t || ''; el.className = 'msg ' + (ok === true ? 'ok' : (ok === false ? 'bad' : '')); }
+function setConn(ok, t){ var e = $('conn'); e.className = 'tag ' + (ok ? 'ok' : 'bad'); e.textContent = t; }
+
+/* 统一请求：/codex/ 走 x-admin-token，/relay/ 走 x-relay-token */
+async function req(path, opt){
+  opt = opt || {};
+  var isRelay = path.indexOf('/relay/') === 0;
+  var h = { 'Content-Type': 'application/json' };
+  if (isRelay) h['x-relay-token'] = TOK; else h['x-admin-token'] = TOK;
+  var r = await fetch(path, Object.assign({}, opt, { headers: Object.assign(h, opt.headers || {}) }));
+  var text = await r.text(), data;
+  try { data = JSON.parse(text); } catch (e) { data = text; }
+  if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + fmtErr(data));
+  return data;
+}
+function fmtErr(d){
+  if (!d) return '';
+  if (typeof d === 'string') return d.slice(0, 200);
+  if (d.detail){
+    if (typeof d.detail === 'string') return d.detail;
+    if (Array.isArray(d.detail)) return d.detail.map(function(x){ return (x.loc ? x.loc.join('.') + ': ' : '') + (x.msg || JSON.stringify(x)); }).join('; ');
+    return JSON.stringify(d.detail);
+  }
+  if (d.error) return String(d.error);
+  return JSON.stringify(d).slice(0, 200);
+}
+/* 后端各接口的数组字段名不统一：授权=customers/licenses/projects，中转站=rows。
+   这里按已知字段名依次探测，避免"取不到就显示空"的假象。 */
+function arr(d, k){
+  if (Array.isArray(d)) return d;
+  if (d && Array.isArray(d[k])) return d[k];
+  var T = ['rows', 'keys', 'items', 'list', 'data'];
+  if (d){ for (var i = 0; i < T.length; i++){ if (Array.isArray(d[T[i]])) return d[T[i]]; } }
+  return [];
+}
+function fmt(n){ return (n === 0 || n) ? String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '0'; }
+function maskKey(k){ k = String(k || ''); return k.length > 16 ? k.slice(0, 10) + '…' + k.slice(-4) : k; }
+
+/* 连接：把两个后台的数据都拉下来 */
+async function conn(){
+  TOK = $('tok').value.trim() || TOK;
+  if (!TOK){ setMsg($('msgTop'), '请先填写管理口令', false); return; }
+  if ($('remember').checked){ localStorage.setItem(ADM_TOK, TOK); localStorage.setItem(KEY_TOK, TOK); }
+  else { localStorage.removeItem(ADM_TOK); localStorage.removeItem(KEY_TOK); }
+  setMsg($('msgTop'), '正在连接…', null);
+  try {
+    var custs = await req('/codex/api/admin/customers');
+    CUSTOMERS = arr(custs, 'customers');
+    var projs = await req('/codex/api/admin/projects');
+    PROJECTS = arr(projs, 'projects');
+    fillCustomers(); fillProjects();
+    setConn(true, '已连接');
+    setMsg($('msgTop'), '连接成功：客户 ' + CUSTOMERS.length + ' 个、项目 ' + PROJECTS.length + ' 个', true);
+    await loadKeys(); await loadLicenses();
+  } catch (e) {
+    setConn(false, '连接失败');
+    setMsg($('msgTop'), '连接失败：' + e.message, false);
+  }
+}
+
+function fillCustomers(){
+  var s = $('iCust'); s.innerHTML = '<option value="">（请选择客户）</option>';
+  CUSTOMERS.forEach(function(c){
+    var o = document.createElement('option');
+    o.value = c.id;
+    o.textContent = '#' + c.id + '  ' + (c.name || '') + (c.contact ? '（' + c.contact + '）' : '');
+    s.appendChild(o);
+  });
+}
+function fillProjects(){
+  var box = $('projBox');
+  if (!PROJECTS.length){ box.innerHTML = '<span class="hint">（后端没返回项目）</span>'; return; }
+  box.innerHTML = '';
+  PROJECTS.forEach(function(p, i){
+    var code = (typeof p === 'string') ? p : (p.code || p.id || p.key || p.name);
+    var name = (typeof p === 'string') ? p : (p.name || p.label || p.title || code);
+    var lb = document.createElement('label');
+    lb.className = 'chk';
+    lb.innerHTML = '<input type="checkbox" value="' + code + '"' + (i === 0 ? ' checked' : '') + ' style="min-width:auto"> ' + name;
+    box.appendChild(lb);
+  });
+}
+
+/* 计费方式 ↔ 有效天数 联动（0 = 无有效期） */
+$('iMode').onchange = function(){
+  var m = this.value;
+  if (m === 'month') $('iDays').value = 30;
+  else if (m === 'year') $('iDays').value = 365;
+  else if (m === 'forever') $('iDays').value = 0;
+};
+$('upMode').onchange = function(){ $('rowUpKey').style.display = this.value === 'custom' ? 'flex' : 'none'; };
+
+$('btnNewCust').onclick = function(){ var b = $('newCustBox'); b.style.display = (b.style.display === 'none' || !b.style.display) ? 'flex' : 'none'; };
+$('btnSaveCust').onclick = async function(){
+  var n = $('nName').value.trim();
+  if (!n){ setMsg($('msgTop'), '请填客户名称', false); return; }
+  try {
+    await req('/codex/api/admin/customers', { method: 'POST', body: JSON.stringify({ name: n, contact: $('nContact').value.trim() }) });
+    setMsg($('msgTop'), '客户已新增', true);
+    $('nName').value = ''; $('nContact').value = '';
+    var c = await req('/codex/api/admin/customers'); CUSTOMERS = arr(c, 'customers'); fillCustomers();
+  } catch (e) { setMsg($('msgTop'), '新增客户失败：' + e.message, false); }
+};
+
+/* —— 核心：一键生成 授权码 + 中转 Key —— */
+$('btnMake').onclick = async function(){
+  /* 【V1.0.0.945】客户资料可完全省略：不选客户也能直接签发授权码，
+     客户首次登录时填的名称/手机号会自动绑定到这张授权码。 */
+  var custId = parseInt($('iCust').value, 10) || 0;
+  var custName = '';
+  CUSTOMERS.forEach(function(c){ if (Number(c.id) === custId) custName = c.name || ('客户' + custId); });
+  var days = parseInt($('iDays').value || '0', 10);
+  var tokens = parseInt($('topup').value || '0', 10);
+  var quota = $('quota').value.trim() || '0';
+  var upMode = $('upMode').value;
+  var projects = Array.prototype.slice.call($('projBox').querySelectorAll('input[type=checkbox]:checked')).map(function(i){ return i.value; });
+
+  this.disabled = true; setMsg($('msgMake'), '正在生成…', null);
+  var steps = [];
+  try {
+    /* 第 1 步：生成授权码 */
+    var lic = await req('/codex/api/admin/licenses', {
+      method: 'POST',
+      body: JSON.stringify({
+        customer_id: custId,
+        mode: $('iMode').value,
+        days: days,
+        projects: projects,
+        switch_minutes: parseInt($('iSwitch').value || '0', 10),
+        max_switches: parseInt($('iMax').value || '0', 10),
+        note: $('iNote').value.trim()
+      })
+    });
+    steps.push('✔ 授权码已生成（授权ID ' + lic.license_id + '）');
+
+    /* 第 2 步：可选入账 */
+    if (tokens > 0){
+      await req('/codex/api/admin/topup', { method: 'POST', body: JSON.stringify({ code: lic.code, tokens: tokens, note: '随一键签发自动入账' }) });
+      steps.push('✔ 已入账 ' + fmt(tokens) + ' token');
+    }
+
+    /* 第 3 步：生成并登记中转 Key，绑定到这张授权 */
+    var k = await req('/relay/admin/keys/add', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: custName,
+        key: (lic.code || ''),
+        upstreamKey: upMode === 'custom' ? $('upKey').value.trim() : '',
+        licenseId: String(lic.license_id),
+        quotaTokens: quota
+      })
+    });
+    steps.push('✔ 中转 Key 已生成并登记（' + (upMode === 'custom' ? '映射上游 Key' : '透传客户自带 Key') + '）');
+
+    /* 展示 */
+    var host = location.origin;
+    var txt = '【' + custName + '】开通信息\n'
+      + '──────────────\n'
+      + '授权码（客户端里填）：\n' + (lic.code || '') + '\n\n'
+      + '中转地址：\n' + host + RELAY_BASE + '\n\n'
+      + '★ 客户只需在客户端登录面板填『授权码』这一项（中转 Key 已绑定在授权码中，无需另外输入）\n' + '中转 Key（已绑定，供你核对）：\n' + (lic.code || '') + '\n\n'
+      + '──────────────\n'
+      + '授权ID：' + lic.license_id + '\n'
+      + '到期：' + (lic.expires_at || '永久') + '\n'
+      + '换机间隔：' + (lic.switch_minutes != null ? lic.switch_minutes + ' 分钟' : '-') + '\n'
+      + '可用项目：' + (projects.join(' / ') || '全部') + '\n'
+      + (tokens > 0 ? '已入账：' + fmt(tokens) + ' token\n' : '')
+      + '配额 token：' + (quota === '0' ? '不限' : fmt(quota)) + '\n';
+    $('out').textContent = txt;
+    $('out').style.display = 'block';
+    $('outEmpty').style.display = 'none';
+    $('btnCopyAll').style.display = 'inline-block';
+    $('btnCopyAll').dataset.txt = txt;
+    /* 顺手把刚生成的授权带进「用量流水」并查一次，省得再手填 */
+    $('uCode').value = String(lic.license_id || '');
+    loadUsage();
+    setMsg($('msgMake'), steps.join('；'), true);
+    await loadKeys(); await loadLicenses();
+  } catch (e) {
+    setMsg($('msgMake'), '失败：' + e.message + (steps.length ? '（已完成：' + steps.join('；') + '）' : ''), false);
+  } finally { this.disabled = false; }
+};
+
+$('btnCopyAll').onclick = function(){
+  var t = this.dataset.txt || $('out').textContent;
+  navigator.clipboard.writeText(t).then(function(){ setMsg($('msgMake'), '已复制，可直接粘贴发给客户', true); },
+    function(){ setMsg($('msgMake'), '复制失败，请手动选中结果框复制', false); });
+};
+
+async function loadKeys(){
+  try {
+    var d = await req('/relay/admin/keys' + (REVEAL ? '?reveal=1' : ''));
+    var ks = arr(d, 'rows');
+    if (d && d.version){ $('keyHead').textContent = '④ 已有 Key（中转站 ' + d.version + '，共 ' + (d.total != null ? d.total : ks.length) + ' 把）'; }
+    if (!ks.length){ $('keyList').innerHTML = '<div class="hint">还没有 Key</div>'; return; }
+    var h = '<table><tr><th>Key</th><th>客户</th><th>上游来源</th><th>绑定授权</th><th>配额</th><th>已用</th><th>请求</th><th>操作</th></tr>';
+    ks.forEach(function(k){
+      var shown = (REVEAL && k.key) ? k.key : (k.keyMasked || maskKey(k.key));
+      h += '<tr><td><code>' + shown + '</code></td><td>' + (k.name || '未命名') + '</td>'
+        + '<td>' + (k.upstreamKey ? '映射' : '透传') + '</td>'
+        + '<td>' + (k.licenseId || '-') + '</td>'
+        + '<td>' + fmt(k.quotaTokens) + '</td><td>' + fmt(k.usedTokens) + '</td><td>' + fmt(k.requests) + '</td>'
+        + '<td class="act">'
+        + '<button type="button" class="ghost" data-k="show" data-mask="' + esc(k.keyMasked) + '">看码</button>'
+        + '<button type="button" class="ghost" data-k="edit" data-mask="' + esc(k.keyMasked) + '" data-name="' + esc(k.name || '') + '" data-lic="' + (k.licenseId || 0) + '" data-quota="' + (k.quotaTokens || 0) + '">编辑</button>'
+        + '<button type="button" class="ghost warnb" data-k="ban" data-mask="' + esc(k.keyMasked) + '" data-on="' + (k.enabled === false ? '0' : '1') + '">' + (k.enabled === false ? '启用' : '停用') + '</button>'
+        + '<button type="button" class="ghost danger" data-k="del" data-mask="' + esc(k.keyMasked) + '">删除</button>'
+        + '</td></tr>';
+    });
+    $('keyList').innerHTML = h + '</table>';
+  } catch (e) { $('keyList').innerHTML = '<div class="msg bad">加载 Key 失败：' + e.message + '</div>'; }
+}
+
+async function loadLicenses(){
+  try {
+    var d = await req('/codex/api/admin/licenses');
+    var ls = arr(d, 'licenses');
+    if (!ls.length){ $('licList').innerHTML = '<div class="hint">还没有授权</div>'; return; }
+    var h = '<table><tr><th>授权ID</th><th>客户</th><th>计费</th><th>额度</th><th>到期</th><th>状态</th><th>操作</th></tr>';
+    ls.slice(0, 30).forEach(function(x){
+      h += '<tr><td>' + (x.id != null ? x.id : '-') + '</td><td>' + (x.customer_name || x.customer || '-') + '</td>'
+        + '<td>' + (x.billing_mode || x.mode || '-') + '</td><td>' + fmt(x.balance != null ? x.balance : x.tokens) + '</td>'
+        + '<td>' + (x.expires_at || '永久') + '</td><td>' + (x.status || '-') + '</td>'
+        + '<td class="act">'
+        + '<button type="button" class="ghost" data-l="show" data-code="' + esc(x.code || '') + '" data-id="' + (x.id || 0) + '">看码</button>'
+        + '<button type="button" class="ghost" data-l="edit" data-id="' + (x.id || 0) + '" data-mode="' + esc(x.billing_mode || x.mode || '') + '">编辑</button>'
+        + '<button type="button" class="ghost warnb" data-l="ban" data-id="' + (x.id || 0) + '" data-st="' + esc(x.status || '') + '">' + ((x.status === 'suspended') ? '启用' : '停用') + '</button>'
+        + '<button type="button" class="ghost danger" data-l="del" data-id="' + (x.id || 0) + '">删除</button>'
+        + '</td></tr>';
+    });
+    $('licList').innerHTML = h + '</table>';
+  } catch (e) { $('licList').innerHTML = '<div class="msg bad">加载授权失败：' + e.message + '</div>'; }
+}
+
+/* ===== 【V1.0.0.957 用户要求】两个表格每行末尾的 4 个操作按钮：看码 / 编辑 / 停用 / 删除 ===== */
+function esc(v){ return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+window.__KEYSFULL = null;
+async function fullKeyOf(mask){
+  if (!window.__KEYSFULL){
+    var d = await req('/relay/admin/keys?reveal=1');
+    var m = {};
+    (arr(d, 'rows') || []).forEach(function(k){ if (k.key) m[String(k.keyMasked || '')] = String(k.key); });
+    window.__KEYSFULL = m;
+  }
+  var f = window.__KEYSFULL[String(mask || '')];
+  if (!f) throw new Error('取不到这把 Key 的完整值（可能已被删除），请点「刷新」后重试');
+  return f;
+}
+async function actKey(btn){
+  var act = btn.getAttribute('data-k'), mask = btn.getAttribute('data-mask');
+  try {
+    if (act === 'show'){
+      var full = await fullKeyOf(mask);
+      try { await navigator.clipboard.writeText(full); } catch (e2) {}
+      alert('完整 Key（已尝试复制到剪贴板）：\n\n' + full);
+      return;
+    }
+    var fk = await fullKeyOf(mask);
+    if (act === 'edit'){
+      var nm = prompt('修改「' + mask + '」的客户名称：', btn.getAttribute('data-name') || '');
+      if (nm === null) return;
+      var lic = prompt('绑定授权ID（填 0 = 不绑定）：', btn.getAttribute('data-lic') || '0');
+      if (lic === null) return;
+      var qt = prompt('配额 token（0 = 不限）：', btn.getAttribute('data-quota') || '0');
+      if (qt === null) return;
+      await req('/relay/admin/keys/set', { method: 'POST', body: JSON.stringify({ key: fk, name: nm, licenseId: parseInt(lic || '0', 10) || 0, quotaTokens: parseInt(qt || '0', 10) || 0 }) });
+      setMsg($('msgMake'), '已修改 Key「' + mask + '」', true);
+    } else if (act === 'ban'){
+      var isOn = btn.getAttribute('data-on') === '1';
+      if (isOn && !confirm('确定停用这把 Key？停用后客户立刻无法调用。')) return;
+      await req('/relay/admin/keys/set', { method: 'POST', body: JSON.stringify({ key: fk, enabled: !isOn }) });
+      setMsg($('msgMake'), (isOn ? '已停用' : '已启用') + ' Key「' + mask + '」', true);
+    } else if (act === 'del'){
+      if (!confirm('确定删除这把 Key？删除后客户立刻无法调用，且不可恢复。')) return;
+      await req('/relay/admin/keys/del', { method: 'POST', body: JSON.stringify({ key: fk }) });
+      setMsg($('msgMake'), '已删除 Key「' + mask + '」', true);
+    }
+    window.__KEYSFULL = null;
+    await loadKeys();
+  } catch (e) { alert('操作失败：' + e.message); }
+}
+async function actLic(btn){
+  var act = btn.getAttribute('data-l'), id = parseInt(btn.getAttribute('data-id') || '0', 10);
+  try {
+    if (act === 'show'){
+      var code = btn.getAttribute('data-code') || '';
+      if (!code){ alert('这一行没有授权码（可能是老数据）'); return; }
+      try { await navigator.clipboard.writeText(code); } catch (e2) {}
+      alert('授权码（已尝试复制到剪贴板）：\n\n' + code);
+      return;
+    }
+    if (act === 'edit'){
+      var mode = prompt('计费方式（token / month / year / forever）：', btn.getAttribute('data-mode') || 'token');
+      if (mode === null) return;
+      var days = prompt('到期天数（0 = 不过期；留空 = 不改到期）：', '');
+      if (days === null) return;
+      var body = { license_id: id, billing_mode: mode };
+      if (String(days).trim() !== '') body.days = parseInt(days, 10) || 0;
+      await req('/codex/api/admin/license/update', { method: 'POST', body: JSON.stringify(body) });
+      setMsg($('msgMake'), '已修改授权 #' + id, true);
+    } else if (act === 'ban'){
+      var cur = btn.getAttribute('data-st') || '';
+      var to = (cur === 'suspended') ? 'active' : 'suspended';
+      if (to === 'suspended' && !confirm('确定停用授权 #' + id + '？停用后客户立刻无法使用。')) return;
+      await req('/codex/api/admin/status', { method: 'POST', body: JSON.stringify({ license_id: id, status: to }) });
+      setMsg($('msgMake'), (to === 'suspended' ? '已停用' : '已启用') + '授权 #' + id, true);
+    } else if (act === 'del'){
+      if (!confirm('确定删除授权 #' + id + '？不可恢复。')) return;
+      await req('/codex/api/admin/license/delete', { method: 'POST', body: JSON.stringify({ id: id }) });
+      setMsg($('msgMake'), '已删除授权 #' + id, true);
+    }
+    await loadLicenses();
+  } catch (e) { alert('操作失败：' + e.message); }
+}
+/* 事件委托：按钮是新渲染出来的，绑在容器上最稳 */
+$('keyList').addEventListener('click', function(ev){
+  var b = ev.target && ev.target.closest ? ev.target.closest('button[data-k]') : null;
+  if (b) actKey(b);
+});
+$('licList').addEventListener('click', function(ev){
+  var b = ev.target && ev.target.closest ? ev.target.closest('button[data-l]') : null;
+  if (b) actLic(b);
+});
+
+/* 用量流水：支持授权码或授权ID；支持按日期范围筛选；支持导出 CSV */
+var USAGE_ROWS = [], USAGE_META = { id: null, balance: 0 };
+function usageFiltered(){
+  var f = $("uFrom").value, t = $("uTo").value;
+  if (!f && !t) return USAGE_ROWS;
+  return USAGE_ROWS.filter(function(x){
+    var day = String(x.created_at || "").slice(0, 10);
+    if (f && day < f) return false;
+    if (t && day > t) return false;
+    return true;
+  });
+}
+function renderUsage(){
+  var rows = usageFiltered();
+  var head = '<div class="hint" style="margin-bottom:6px">授权ID ' + (USAGE_META.id != null ? USAGE_META.id : "-")
+    + ' · 剩余额度 <b>' + fmt(USAGE_META.balance) + '</b> token · 共 ' + USAGE_ROWS.length + ' 条'
+    + (rows.length !== USAGE_ROWS.length ? '（筛选后 ' + rows.length + ' 条）' : '') + '</div>';
+  if (!rows.length){
+    $("useOut").innerHTML = head + '<div class="hint">没有符合条件的流水</div>';
+    $("btnUsageCsv").style.display = "none";
+    return;
+  }
+  var h = head + '<table><tr><th>时间</th><th>模型</th><th>输入</th><th>输出</th><th>缓存</th><th>计费</th><th>余额</th><th>结果</th></tr>';
+  rows.forEach(function(x){
+    var tt = String(x.created_at || "").replace("T", " ").slice(0, 19);
+    h += '<tr><td>' + tt + '</td><td>' + (x.model || "-") + '</td><td>' + fmt(x.input_tokens) + '</td><td>' + fmt(x.output_tokens)
+      + '</td><td>' + fmt(x.cached_tokens) + '</td><td>' + fmt(x.charged_tokens) + '</td><td>' + fmt(x.balance_after)
+      + '</td><td>' + (x.success ? "成功" : "失败") + '</td></tr>';
+  });
+  $("useOut").innerHTML = h + '</table>';
+  $("btnUsageCsv").style.display = "inline-block";
+}
+async function loadUsage(){
+  var raw = $("uCode").value.trim();
+  if (!raw){ setMsg($("msgUsage"), "请先填授权码或授权ID", false); return; }
+  setMsg($("msgUsage"), "查询中…", null);
+  try {
+    var d = await req("/codex/api/admin/usage?code=" + encodeURIComponent(raw) + "&limit=500");
+    USAGE_ROWS = d.items || [];
+    USAGE_META = { id: d.license_id, balance: d.balance };
+    renderUsage();
+    setMsg($("msgUsage"), "查询成功，共 " + USAGE_ROWS.length + " 条" + (usageFiltered().length !== USAGE_ROWS.length ? "（筛选后 " + usageFiltered().length + " 条）" : ""), true);
+  } catch (e) {
+    $("useOut").innerHTML = '<div class="msg bad">查询失败：' + e.message + '</div>';
+    setMsg($("msgUsage"), "查询失败", false);
+  }
+}
+/* 导出 CSV：带 BOM，Excel 打开不乱码 */
+function exportUsageCsv(){
+  var rows = usageFiltered();
+  if (!rows.length){ setMsg($("msgUsage"), "没有可导出的流水", false); return; }
+  var head = ["时间", "模型", "输入tokens", "输出tokens", "缓存tokens", "计费tokens", "余额", "结果", "request_id"];
+  var lines = [head.join(",")];
+  rows.forEach(function(x){
+    var tt = String(x.created_at || "").replace("T", " ").slice(0, 19);
+    lines.push([tt, x.model || "", x.input_tokens || 0, x.output_tokens || 0, x.cached_tokens || 0,
+      x.charged_tokens || 0, x.balance_after || 0, (x.success ? "成功" : "失败"), x.request_id || ""].join(","));
+  });
+  var csv = "\ufeff" + lines.join("\r\n");
+  var blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "用量流水_授权" + (USAGE_META.id != null ? USAGE_META.id : "") + "_" + new Date().toISOString().slice(0, 10) + ".csv";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setMsg($("msgUsage"), "已导出 " + rows.length + " 条到 CSV", true);
+}
+$("btnUsage").onclick = loadUsage;
+$("btnUsageCsv").onclick = exportUsageCsv;
+$("uFrom").onchange = renderUsage;
+$("uTo").onchange = renderUsage;
+$("btnUsageClear").onclick = function(){ $("uFrom").value = ""; $("uTo").value = ""; renderUsage(); setMsg($("msgUsage"), "已清空筛选条件", true); };
+
+$('btnReload').onclick = function(){ loadKeys(); loadLicenses(); };
+$('btnEyeKeys').onclick = function(){ REVEAL = REVEAL ? 0 : 1; this.textContent = REVEAL ? '隐藏 Key' : '显示 Key'; loadKeys(); };
+$('btnEyeTok').onclick = function(){ var t = $('tok'); var hid = t.classList.toggle('dots'); this.textContent = hid ? '显示口令' : '隐藏口令'; };
+$('btnForget').onclick = function(){ localStorage.removeItem(ADM_TOK); localStorage.removeItem(KEY_TOK); TOK = ''; $('tok').value = ''; setConn(false, '未连接'); setMsg($('msgTop'), '已清除本机保存的口令', true); };
+$('btnConn').onclick = conn;
+
+/* 启动：有口令就自动连接 */
+(function(){
+  $('tok').value = TOK;
+  if (TOK){ conn(); } else { setMsg($('msgTop'), '请填管理口令后点「连接」', null); }
+})();
+</script>
+</body>
+</html>
