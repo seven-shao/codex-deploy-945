@@ -6,10 +6,10 @@
 cd /tmp && rm -rf c957 && mkdir c957 && cd c957
 OK=0
 for U in \
-  "https://cdn.jsdelivr.net/gh/seven-shao/codex-deploy-945@main/server-957.tar.gz" \
-  "https://raw.githubusercontent.com/seven-shao/codex-deploy-945/main/server-957.tar.gz" \
   "https://ghproxy.net/https://raw.githubusercontent.com/seven-shao/codex-deploy-945/main/server-957.tar.gz" \
-  "https://gh-proxy.com/https://raw.githubusercontent.com/seven-shao/codex-deploy-945/main/server-957.tar.gz" ; do
+  "https://gh-proxy.com/https://raw.githubusercontent.com/seven-shao/codex-deploy-945/main/server-957.tar.gz" \
+  "https://ghfast.top/https://raw.githubusercontent.com/seven-shao/codex-deploy-945/main/server-957.tar.gz" \
+  "https://raw.githubusercontent.com/seven-shao/codex-deploy-945/main/server-957.tar.gz" ; do
   echo "尝试: $U"
   if curl -fsSL --connect-timeout 10 --max-time 90 -o p.tar.gz "$U"; then
     if tar -tzf p.tar.gz >/dev/null 2>&1; then OK=1; echo "下载成功: $U"; break; fi
