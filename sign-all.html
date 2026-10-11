@@ -48,32 +48,84 @@ code{word-break:break-all;overflow-wrap:anywhere}
   .act button{margin:0 3px 0 0;padding:3px 9px;font-size:12px}
   .act button.danger{background:#3a1d1d;color:#ffb4b4}
   .act button.warnb{background:#3a2f16;color:#ffd88a}
+  /* 【V1.0.0.966 用户要求】看 Key 弹窗：屏幕居中 + 鼠标左键可拖动 + 右下角「复制」按钮 */
+  .cdx-mask{position:fixed;inset:0;background:rgba(0,0,0,.42);display:none;z-index:9998}
+  .cdx-mask.on{display:block}
+  .cdx-modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(580px,92vw);background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.6);z-index:9999;display:none}
+  .cdx-modal.on{display:block}
+  .cdx-modal-head{cursor:move;user-select:none;display:flex;align-items:center;gap:8px;padding:11px 14px;border-bottom:1px solid var(--line);font-weight:600;color:#cfe0ff}
+  .cdx-modal-head .t{flex:1}
+  .cdx-modal-head .x{background:transparent;border:0;color:var(--dim);font-size:18px;line-height:1;cursor:pointer;padding:0 4px}
+  .cdx-modal-head .x:hover{color:#fff}
+  .cdx-modal-body{padding:14px;font-size:13px;line-height:1.7;white-space:pre-wrap;word-break:break-all;max-height:52vh;overflow:auto;color:#dbe7ff}
+  .cdx-modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:10px 14px;border-top:1px solid var(--line)}
+  .cdx-toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#13251a;color:#a6f0bb;border:1px solid #2f5a3a;padding:8px 16px;border-radius:8px;font-size:13px;z-index:10001;opacity:0;pointer-events:none;transition:opacity .2s}
+  /* 【用户要求】确认 / 提示 / 输入弹窗：屏幕正中显示 + 鼠标按住标题栏可自由拖动 */
+  .cdx-cfm{width:min(430px,92vw)}
+  .cdx-cfm .cdx-modal-body{max-height:40vh}
+  .cdx-cfm input{width:100%;box-sizing:border-box}
 </style>
 </head>
 <body>
+<!-- 【V1.0.0.966 用户要求】看 Key 弹窗：屏幕居中 · 标题栏可鼠标左键拖动 · 右下角「复制」按钮 -->
+<div id="cdxMask" class="cdx-mask"></div>
+<div id="cdxModal" class="cdx-modal">
+  <div class="cdx-modal-head" id="cdxModalHead">
+    <span class="t" id="cdxModalTitle">提示</span>
+    <button type="button" class="x" id="cdxModalClose" title="关闭">×</button>
+  </div>
+  <div class="cdx-modal-body" id="cdxModalBody"></div>
+  <div class="cdx-modal-foot">
+    <button type="button" id="cdxModalCopy">复制</button>
+    <button type="button" class="ghost" id="cdxModalOk">确定</button>
+  </div>
+</div>
+<!-- 【用户要求】确认/提示/输入弹窗：屏幕居中 + 可鼠标拖动 -->
+<div id="cdxCfmMask" class="cdx-mask"></div>
+<div id="cdxCfm" class="cdx-modal cdx-cfm">
+  <div class="cdx-modal-head" id="cdxCfmHead">
+    <span class="t" id="cdxCfmTitle">提示</span>
+    <button type="button" class="x" id="cdxCfmClose" title="关闭">×</button>
+  </div>
+  <div class="cdx-modal-body" id="cdxCfmBody"></div>
+  <div id="cdxCfmInputWrap" style="display:none;padding:0 14px 12px"><input id="cdxCfmInput" type="text"></div>
+  <div class="cdx-modal-foot">
+    <button type="button" class="ghost" id="cdxCfmCancel">取消</button>
+    <button type="button" id="cdxCfmOk">确定</button>
+  </div>
+</div>
+<div id="cdxToast" class="cdx-toast"></div>
 <div class="wrap">
   <h1>CODEX 一键签发控制台</h1>
-  <div class="sub">填一次客户与计费，点一个按钮 —— <b>授权码 + 中转 Key 一次性全部生成</b>，生成完直接复制发给客户。</div>
+  <div class="sub">填一次客户与计费，点一个按钮 —— <b>中转 Key 一次性生成</b>，生成完直接复制发给客户。</div>
 
-  <div class="card">
-    <h2>① 管理口令 <span class="tool"><span id="conn" class="tag">未连接</span></span></h2>
-    <div class="row">
-      <input id="tok" class="dots" placeholder="管理口令（两处通用）" style="min-width:320px">
-      <button id="btnEyeTok" class="ghost small" type="button">显示口令</button>
-      <button id="btnConn">连接</button>
-      <button id="btnForget" class="ghost small" type="button">忘记口令</button>
-    </div>
-    <div class="hint">口令同时用于「授权后台」与「中转站」，填一次即可；勾选下方「记住口令」后下次自动连接。</div>
-    <div class="row" style="margin-top:6px">
-      <label class="chk"><input type="checkbox" id="remember" checked style="min-width:auto"> 记住口令（存在本机浏览器）</label>
-    </div>
-    <div id="msgTop" class="msg"></div>
-  </div>
-
+  <!-- 【V1.0.0.968 用户要求】把左侧的「客户与计费」整块搬到右上，与「管理口令」并排；右侧下方仍是原来的客户 Key 表与用量流水 -->
   <div class="grid">
     <div>
       <div class="card">
-        <h2>② 客户与计费（生成一次，两个都出）</h2>
+        <h2>① 管理口令 <span class="tool"><span id="conn" class="tag">未连接</span></span></h2>
+        <div class="row">
+          <input id="tok" class="dots" placeholder="管理口令（两处通用）" style="min-width:320px">
+          <button id="btnEyeTok" class="ghost small" type="button">显示口令</button>
+          <button id="btnConn">连接</button>
+          <button id="btnForget" class="ghost small" type="button">忘记口令</button>
+        </div>
+        <div class="hint">口令同时用于「管理后台」与「中转站」，填一次即可；勾选下方「记住口令」后下次自动连接。</div>
+        <div class="row" style="margin-top:6px">
+          <label class="chk"><input type="checkbox" id="remember" checked style="min-width:auto"> 记住口令（存在本机浏览器）</label>
+        </div>
+        <div id="msgTop" class="msg"></div>
+      </div>
+      <div class="card">
+        <h2>③ 生成结果 <span class="tool"><button id="btnCopyAll" class="ghost small" type="button" style="display:none">复制全部（发客户）</button></span></h2>
+        <div id="out" class="out"></div>
+        <div id="outEmpty" class="hint">还没有生成；点上面的「⚡ 一键生成 Key」。</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>② 客户与计费</h2>
         <div class="row">
           <label>客户</label>
           <select id="iCust" style="min-width:240px"><option value="">（点连接后加载）</option></select>
@@ -129,38 +181,27 @@ code{word-break:break-all;overflow-wrap:anywhere}
           <span class="hint">按月/按年计费的客户需先入账额度才能激活</span>
         </div>
         <div class="row" style="margin-top:10px">
-          <button id="btnMake" class="big">⚡ 一键生成授权码 + Key</button>
+          <button id="btnMake" class="big">⚡ 一键生成 Key</button>
           <span id="msgMake" class="msg"></span>
         </div>
       </div>
-
       <div class="card">
-        <h2>③ 生成结果 <span class="tool"><button id="btnCopyAll" class="ghost small" type="button" style="display:none">复制全部（发客户）</button></span></h2>
-        <div id="out" class="out"></div>
-        <div id="outEmpty" class="hint">还没有生成；点上面的「⚡ 一键生成授权码 + Key」。</div>
-      </div>
-    </div>
-
-    <div>
-      <div class="card">
-        <h2><span id="keyHead">④ 已有 Key</span> <span class="tool"><button id="btnReload" class="ghost small" type="button">刷新</button><button id="btnEyeKeys" class="ghost small" type="button">显示 Key</button></span></h2>
+        <h2><span id="keyHead">④ 客户 · Key</span> <span class="tool"><button id="btnReload" class="ghost small" type="button">刷新</button><button id="btnEyeKeys" class="ghost small" type="button">显示 Key</button></span></h2>
+        <div class="hint" style="margin-bottom:8px">下表展示所有中转 Key：Key 值、上游来源、配额、已用、请求数，一行看全。</div>
         <div id="keyList"><div class="hint">（点连接后加载）</div></div>
-      </div>
-      <div class="card">
-        <h2>⑤ 客户与授权</h2>
-        <div id="licList"><div class="hint">（点连接后加载）</div></div>
+        <div id="licList" style="display:none"></div>
       </div>
       <div class="card">
         <h2>⑦ 用量流水 <span class="tool"><button id="btnUsageCsv" class="ghost small" type="button" style="display:none">导出 CSV</button></span></h2>
         <div class="row">
-          <input id="uCode" placeholder="授权码 或 授权ID" style="min-width:230px">
+          <input id="uCode" placeholder="Key" style="min-width:230px">
           <label>起</label><input id="uFrom" type="date" style="min-width:150px">
           <label>止</label><input id="uTo" type="date" style="min-width:150px">
           <button id="btnUsage" class="small">查询</button>
           <button id="btnUsageClear" class="ghost small" type="button">清空条件</button>
           <span id="msgUsage" class="msg"></span>
         </div>
-        <div id="useOut" class="hint">填授权码（或授权ID）后点「查询」；可按日期范围筛选，也可导出 CSV。生成授权后会自动带进来。</div>
+        <div id="useOut" class="hint">填 Key 后点「查询」；可按日期范围筛选，也可导出 CSV。生成 Key 后会自动带进来。</div>
       </div>
     </div>
   </div>
@@ -168,8 +209,7 @@ code{word-break:break-all;overflow-wrap:anywhere}
   <div class="card">
     <h2>⑥ 单独打开原页面（功能完全一样）</h2>
     <div class="row">
-      <a href="/codex/admin" target="_blank" style="color:#8ab4ff">打开完整授权后台 ↗</a>
-      <a href="keys-admin.html" target="_blank" style="color:#8ab4ff;margin-left:16px">打开完整 Key 管理 ↗</a>
+      <a href="keys-admin.html" target="_blank" style="color:#8ab4ff">打开完整 Key 管理 ↗</a>
     </div>
   </div>
 </div>
@@ -207,7 +247,7 @@ function fmtErr(d){
   if (d.error) return String(d.error);
   return JSON.stringify(d).slice(0, 200);
 }
-/* 后端各接口的数组字段名不统一：授权=customers/licenses/projects，中转站=rows。
+/* 后端各接口的数组字段名不统一：客户=customers、项目=projects，中转站=rows。
    这里按已知字段名依次探测，避免"取不到就显示空"的假象。 */
 function arr(d, k){
   if (Array.isArray(d)) return d;
@@ -234,7 +274,7 @@ async function conn(){
     fillCustomers(); fillProjects();
     setConn(true, '已连接');
     setMsg($('msgTop'), '连接成功：客户 ' + CUSTOMERS.length + ' 个、项目 ' + PROJECTS.length + ' 个', true);
-    await loadKeys(); await loadLicenses();
+    await loadKeys();
   } catch (e) {
     setConn(false, '连接失败');
     setMsg($('msgTop'), '连接失败：' + e.message, false);
@@ -285,10 +325,10 @@ $('btnSaveCust').onclick = async function(){
   } catch (e) { setMsg($('msgTop'), '新增客户失败：' + e.message, false); }
 };
 
-/* —— 核心：一键生成 授权码 + 中转 Key —— */
+/* —— 核心：一键生成中转 Key —— */
 $('btnMake').onclick = async function(){
-  /* 【V1.0.0.945】客户资料可完全省略：不选客户也能直接签发授权码，
-     客户首次登录时填的名称/手机号会自动绑定到这张授权码。 */
+  /* 【V1.0.0.945】客户资料可完全省略：不选客户也能直接签发，
+     客户首次登录时填的名称/手机号会自动绑定到这把 Key。 */
   var custId = parseInt($('iCust').value, 10) || 0;
   var custName = '';
   CUSTOMERS.forEach(function(c){ if (Number(c.id) === custId) custName = c.name || ('客户' + custId); });
@@ -301,7 +341,7 @@ $('btnMake').onclick = async function(){
   this.disabled = true; setMsg($('msgMake'), '正在生成…', null);
   var steps = [];
   try {
-    /* 第 1 步：生成授权码 */
+    /* 第 1 步：生成登录凭证（Key 值由服务端下发） */
     var lic = await req('/codex/api/admin/licenses', {
       method: 'POST',
       body: JSON.stringify({
@@ -314,7 +354,7 @@ $('btnMake').onclick = async function(){
         note: $('iNote').value.trim()
       })
     });
-    steps.push('✔ 授权码已生成（授权ID ' + lic.license_id + '）');
+    steps.push('✔ Key 已生成');
 
     /* 第 2 步：可选入账 */
     if (tokens > 0){
@@ -322,7 +362,7 @@ $('btnMake').onclick = async function(){
       steps.push('✔ 已入账 ' + fmt(tokens) + ' token');
     }
 
-    /* 第 3 步：生成并登记中转 Key，绑定到这张授权 */
+    /* 第 3 步：生成并登记中转 Key */
     var k = await req('/relay/admin/keys/add', {
       method: 'POST',
       body: JSON.stringify({
@@ -339,11 +379,10 @@ $('btnMake').onclick = async function(){
     var host = location.origin;
     var txt = '【' + custName + '】开通信息\n'
       + '──────────────\n'
-      + '授权码（客户端里填）：\n' + (lic.code || '') + '\n\n'
+      + 'Key（客户端里填）：\n' + (lic.code || '') + '\n\n'
       + '中转地址：\n' + host + RELAY_BASE + '\n\n'
-      + '★ 客户只需在客户端登录面板填『授权码』这一项（中转 Key 已绑定在授权码中，无需另外输入）\n' + '中转 Key（已绑定，供你核对）：\n' + (lic.code || '') + '\n\n'
+      + '★ 客户只需在客户端登录面板填『Key』这一项（无需另外输入）\n\n'
       + '──────────────\n'
-      + '授权ID：' + lic.license_id + '\n'
       + '到期：' + (lic.expires_at || '永久') + '\n'
       + '换机间隔：' + (lic.switch_minutes != null ? lic.switch_minutes + ' 分钟' : '-') + '\n'
       + '可用项目：' + (projects.join(' / ') || '全部') + '\n'
@@ -354,8 +393,8 @@ $('btnMake').onclick = async function(){
     $('outEmpty').style.display = 'none';
     $('btnCopyAll').style.display = 'inline-block';
     $('btnCopyAll').dataset.txt = txt;
-    /* 顺手把刚生成的授权带进「用量流水」并查一次，省得再手填 */
-    $('uCode').value = String(lic.license_id || '');
+    /* 顺手把刚生成的 Key 带进「用量流水」并查一次，省得再手填 */
+    $('uCode').value = String(lic.code || '');
     loadUsage();
     setMsg($('msgMake'), steps.join('；'), true);
     await loadKeys(); await loadLicenses();
@@ -370,49 +409,62 @@ $('btnCopyAll').onclick = function(){
     function(){ setMsg($('msgMake'), '复制失败，请手动选中结果框复制', false); });
 };
 
+/* 【Key 视图】只渲染中转站的 Key 列表 */
+var KEYS_DATA = null;
+
 async function loadKeys(){
   try {
     var d = await req('/relay/admin/keys' + (REVEAL ? '?reveal=1' : ''));
-    var ks = arr(d, 'rows');
-    if (d && d.version){ $('keyHead').textContent = '④ 已有 Key（中转站 ' + d.version + '，共 ' + (d.total != null ? d.total : ks.length) + ' 把）'; }
-    if (!ks.length){ $('keyList').innerHTML = '<div class="hint">还没有 Key</div>'; return; }
-    var h = '<table><tr><th>Key</th><th>客户</th><th>上游来源</th><th>绑定授权</th><th>配额</th><th>已用</th><th>请求</th><th>操作</th></tr>';
-    ks.forEach(function(k){
-      var shown = (REVEAL && k.key) ? k.key : (k.keyMasked || maskKey(k.key));
-      h += '<tr><td><code>' + shown + '</code></td><td>' + (k.name || '未命名') + '</td>'
-        + '<td>' + (k.upstreamKey ? '映射' : '透传') + '</td>'
-        + '<td>' + (k.licenseId || '-') + '</td>'
-        + '<td>' + fmt(k.quotaTokens) + '</td><td>' + fmt(k.usedTokens) + '</td><td>' + fmt(k.requests) + '</td>'
-        + '<td class="act">'
-        + '<button type="button" class="ghost" data-k="show" data-mask="' + esc(k.keyMasked) + '">看码</button>'
-        + '<button type="button" class="ghost" data-k="edit" data-mask="' + esc(k.keyMasked) + '" data-name="' + esc(k.name || '') + '" data-lic="' + (k.licenseId || 0) + '" data-quota="' + (k.quotaTokens || 0) + '">编辑</button>'
-        + '<button type="button" class="ghost warnb" data-k="ban" data-mask="' + esc(k.keyMasked) + '" data-on="' + (k.enabled === false ? '0' : '1') + '">' + (k.enabled === false ? '启用' : '停用') + '</button>'
-        + '<button type="button" class="ghost danger" data-k="del" data-mask="' + esc(k.keyMasked) + '">删除</button>'
-        + '</td></tr>';
-    });
-    $('keyList').innerHTML = h + '</table>';
-  } catch (e) { $('keyList').innerHTML = '<div class="msg bad">加载 Key 失败：' + e.message + '</div>'; }
+    KEYS_DATA = { rows: arr(d, 'rows') || [], version: d && d.version, total: d && d.total, err: '' };
+  } catch (e) { KEYS_DATA = { rows: [], err: e.message }; }
+  renderMerged();
 }
 
-async function loadLicenses(){
-  try {
-    var d = await req('/codex/api/admin/licenses');
-    var ls = arr(d, 'licenses');
-    if (!ls.length){ $('licList').innerHTML = '<div class="hint">还没有授权</div>'; return; }
-    var h = '<table><tr><th>授权ID</th><th>客户</th><th>计费</th><th>额度</th><th>到期</th><th>状态</th><th>操作</th></tr>';
-    ls.slice(0, 30).forEach(function(x){
-      h += '<tr><td>' + (x.id != null ? x.id : '-') + '</td><td>' + (x.customer_name || x.customer || '-') + '</td>'
-        + '<td>' + (x.billing_mode || x.mode || '-') + '</td><td>' + fmt(x.balance != null ? x.balance : x.tokens) + '</td>'
-        + '<td>' + (x.expires_at || '永久') + '</td><td>' + (x.status || '-') + '</td>'
-        + '<td class="act">'
-        + '<button type="button" class="ghost" data-l="show" data-code="' + esc(x.code || '') + '" data-id="' + (x.id || 0) + '">看码</button>'
-        + '<button type="button" class="ghost" data-l="edit" data-id="' + (x.id || 0) + '" data-mode="' + esc(x.billing_mode || x.mode || '') + '">编辑</button>'
-        + '<button type="button" class="ghost warnb" data-l="ban" data-id="' + (x.id || 0) + '" data-st="' + esc(x.status || '') + '">' + ((x.status === 'suspended') ? '启用' : '停用') + '</button>'
-        + '<button type="button" class="ghost danger" data-l="del" data-id="' + (x.id || 0) + '">删除</button>'
-        + '</td></tr>';
-    });
-    $('licList').innerHTML = h + '</table>';
-  } catch (e) { $('licList').innerHTML = '<div class="msg bad">加载授权失败：' + e.message + '</div>'; }
+function renderMerged(){
+  var box = $('keyList');
+  if (!box) return;
+  var kd = KEYS_DATA || { rows: [] };
+  var ks = kd.rows || [];
+  var head = $('keyHead');
+  if (head){
+    head.textContent = '④ 客户 · Key'
+      + (kd.version ? ' · 中转站 ' + kd.version : '')
+      + ' · 共 ' + (kd.total != null ? kd.total : ks.length) + ' 把';
+  }
+  var errs = [];
+  if (kd.err) errs.push('加载 Key 失败：' + kd.err);
+  var tail = errs.length ? '<div class="msg bad">' + esc(errs.join('；')) + '</div>' : '';
+  if (!ks.length){
+    box.innerHTML = '<div class="hint">还没有 Key</div>' + tail;
+    return;
+  }
+
+  function shownOf(k){ return (REVEAL && k.key) ? k.key : (k.keyMasked || maskKey(k.key)); }
+  function keyTds(k){
+    return '<td><code>' + esc(shownOf(k)) + '</code></td>'
+      + '<td>' + esc(k.name || k.customer || '未命名') + '</td>'
+      + '<td>' + esc(k.upstreamKey ? '映射' : '透传') + '</td>'
+      + '<td>' + fmt(k.quotaTokens) + '</td>'
+      + '<td>' + fmt(k.usedTokens) + '</td>'
+      + '<td>' + fmt(k.requests) + '</td>';
+  }
+  function keyBtns(k){
+    return '<button type="button" class="ghost" data-k="show" data-mask="' + esc(k.keyMasked) + '">看码</button>'
+      + '<button type="button" class="ghost" data-k="edit" data-mask="' + esc(k.keyMasked) + '" data-name="' + esc(k.name || '') + '" data-quota="' + (k.quotaTokens || 0) + '">编辑</button>'
+      + '<button type="button" class="ghost warnb" data-k="ban" data-mask="' + esc(k.keyMasked) + '" data-on="' + (k.enabled === false ? '0' : '1') + '">' + (k.enabled === false ? '启用' : '停用') + '</button>'
+      + '<button type="button" class="ghost danger" data-k="del" data-mask="' + esc(k.keyMasked) + '">删除</button>';
+  }
+  var LK = '<span style="color:#9fb0c9;font-size:11px">Key </span>';
+
+  var h = '<table><tr>'
+    + '<th>Key</th><th>客户</th><th>上游来源</th><th>配额</th><th>已用</th><th>请求</th><th>操作</th>'
+    + '</tr>';
+
+  ks.forEach(function(k){
+    h += '<tr>' + keyTds(k) + '<td class="act">' + LK + keyBtns(k) + '</td></tr>';
+  });
+
+  box.innerHTML = h + '</table>' + tail;
 }
 
 /* ===== 【V1.0.0.957 用户要求】两个表格每行末尾的 4 个操作按钮：看码 / 编辑 / 停用 / 删除 ===== */
@@ -434,78 +486,40 @@ async function actKey(btn){
   try {
     if (act === 'show'){
       var full = await fullKeyOf(mask);
-      try { await navigator.clipboard.writeText(full); } catch (e2) {}
-      alert('完整 Key（已尝试复制到剪贴板）：\n\n' + full);
+      showCodeModal('完整 Key', full);
       return;
     }
     var fk = await fullKeyOf(mask);
     if (act === 'edit'){
-      var nm = prompt('修改「' + mask + '」的客户名称：', btn.getAttribute('data-name') || '');
+      var nm = await cdxPrompt('修改「' + mask + '」的客户名称：', btn.getAttribute('data-name') || '');
       if (nm === null) return;
-      var lic = prompt('绑定授权ID（填 0 = 不绑定）：', btn.getAttribute('data-lic') || '0');
-      if (lic === null) return;
-      var qt = prompt('配额 token（0 = 不限）：', btn.getAttribute('data-quota') || '0');
+      var qt = await cdxPrompt('配额 token（0 = 不限）：', btn.getAttribute('data-quota') || '0');
       if (qt === null) return;
-      await req('/relay/admin/keys/set', { method: 'POST', body: JSON.stringify({ key: fk, name: nm, licenseId: parseInt(lic || '0', 10) || 0, quotaTokens: parseInt(qt || '0', 10) || 0 }) });
+      await req('/relay/admin/keys/set', { method: 'POST', body: JSON.stringify({ key: fk, name: nm, quotaTokens: parseInt(qt || '0', 10) || 0 }) });
       setMsg($('msgMake'), '已修改 Key「' + mask + '」', true);
     } else if (act === 'ban'){
       var isOn = btn.getAttribute('data-on') === '1';
-      if (isOn && !confirm('确定停用这把 Key？停用后客户立刻无法调用。')) return;
+      if (isOn && !(await cdxConfirm('确定停用这把 Key？停用后客户立刻无法调用。'))) return;
       await req('/relay/admin/keys/set', { method: 'POST', body: JSON.stringify({ key: fk, enabled: !isOn }) });
       setMsg($('msgMake'), (isOn ? '已停用' : '已启用') + ' Key「' + mask + '」', true);
     } else if (act === 'del'){
-      if (!confirm('确定删除这把 Key？删除后客户立刻无法调用，且不可恢复。')) return;
+      if (!(await cdxConfirm('确定删除这把 Key？删除后客户立刻无法调用，且不可恢复。'))) return;
       await req('/relay/admin/keys/del', { method: 'POST', body: JSON.stringify({ key: fk }) });
       setMsg($('msgMake'), '已删除 Key「' + mask + '」', true);
     }
     window.__KEYSFULL = null;
     await loadKeys();
-  } catch (e) { alert('操作失败：' + e.message); }
-}
-async function actLic(btn){
-  var act = btn.getAttribute('data-l'), id = parseInt(btn.getAttribute('data-id') || '0', 10);
-  try {
-    if (act === 'show'){
-      var code = btn.getAttribute('data-code') || '';
-      if (!code){ alert('这一行没有授权码（可能是老数据）'); return; }
-      try { await navigator.clipboard.writeText(code); } catch (e2) {}
-      alert('授权码（已尝试复制到剪贴板）：\n\n' + code);
-      return;
-    }
-    if (act === 'edit'){
-      var mode = prompt('计费方式（token / month / year / forever）：', btn.getAttribute('data-mode') || 'token');
-      if (mode === null) return;
-      var days = prompt('到期天数（0 = 不过期；留空 = 不改到期）：', '');
-      if (days === null) return;
-      var body = { license_id: id, billing_mode: mode };
-      if (String(days).trim() !== '') body.days = parseInt(days, 10) || 0;
-      await req('/codex/api/admin/license/update', { method: 'POST', body: JSON.stringify(body) });
-      setMsg($('msgMake'), '已修改授权 #' + id, true);
-    } else if (act === 'ban'){
-      var cur = btn.getAttribute('data-st') || '';
-      var to = (cur === 'suspended') ? 'active' : 'suspended';
-      if (to === 'suspended' && !confirm('确定停用授权 #' + id + '？停用后客户立刻无法使用。')) return;
-      await req('/codex/api/admin/status', { method: 'POST', body: JSON.stringify({ license_id: id, status: to }) });
-      setMsg($('msgMake'), (to === 'suspended' ? '已停用' : '已启用') + '授权 #' + id, true);
-    } else if (act === 'del'){
-      if (!confirm('确定删除授权 #' + id + '？不可恢复。')) return;
-      await req('/codex/api/admin/license/delete', { method: 'POST', body: JSON.stringify({ id: id }) });
-      setMsg($('msgMake'), '已删除授权 #' + id, true);
-    }
-    await loadLicenses();
-  } catch (e) { alert('操作失败：' + e.message); }
+  } catch (e) { await cdxAlert('操作失败：' + e.message); }
 }
 /* 事件委托：按钮是新渲染出来的，绑在容器上最稳 */
 $('keyList').addEventListener('click', function(ev){
-  var b = ev.target && ev.target.closest ? ev.target.closest('button[data-k]') : null;
-  if (b) actKey(b);
-});
-$('licList').addEventListener('click', function(ev){
-  var b = ev.target && ev.target.closest ? ev.target.closest('button[data-l]') : null;
-  if (b) actLic(b);
+  var t = ev.target;
+  if (!t || !t.closest) return;
+  var bk = t.closest('button[data-k]');
+  if (bk) { actKey(bk); }
 });
 
-/* 用量流水：支持授权码或授权ID；支持按日期范围筛选；支持导出 CSV */
+/* 用量流水：按 Key 查询；支持按日期范围筛选；支持导出 CSV */
 var USAGE_ROWS = [], USAGE_META = { id: null, balance: 0 };
 function usageFiltered(){
   var f = $("uFrom").value, t = $("uTo").value;
@@ -519,8 +533,7 @@ function usageFiltered(){
 }
 function renderUsage(){
   var rows = usageFiltered();
-  var head = '<div class="hint" style="margin-bottom:6px">授权ID ' + (USAGE_META.id != null ? USAGE_META.id : "-")
-    + ' · 剩余额度 <b>' + fmt(USAGE_META.balance) + '</b> token · 共 ' + USAGE_ROWS.length + ' 条'
+  var head = '<div class="hint" style="margin-bottom:6px">剩余额度 <b>' + fmt(USAGE_META.balance) + '</b> token · 共 ' + USAGE_ROWS.length + ' 条'
     + (rows.length !== USAGE_ROWS.length ? '（筛选后 ' + rows.length + ' 条）' : '') + '</div>';
   if (!rows.length){
     $("useOut").innerHTML = head + '<div class="hint">没有符合条件的流水</div>';
@@ -539,7 +552,7 @@ function renderUsage(){
 }
 async function loadUsage(){
   var raw = $("uCode").value.trim();
-  if (!raw){ setMsg($("msgUsage"), "请先填授权码或授权ID", false); return; }
+  if (!raw){ setMsg($("msgUsage"), "请先填 Key", false); return; }
   setMsg($("msgUsage"), "查询中…", null);
   try {
     var d = await req("/codex/api/admin/usage?code=" + encodeURIComponent(raw) + "&limit=500");
@@ -567,7 +580,7 @@ function exportUsageCsv(){
   var blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   var a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "用量流水_授权" + (USAGE_META.id != null ? USAGE_META.id : "") + "_" + new Date().toISOString().slice(0, 10) + ".csv";
+  a.download = "用量流水_" + new Date().toISOString().slice(0, 10) + ".csv";
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setMsg($("msgUsage"), "已导出 " + rows.length + " 条到 CSV", true);
 }
@@ -577,7 +590,7 @@ $("uFrom").onchange = renderUsage;
 $("uTo").onchange = renderUsage;
 $("btnUsageClear").onclick = function(){ $("uFrom").value = ""; $("uTo").value = ""; renderUsage(); setMsg($("msgUsage"), "已清空筛选条件", true); };
 
-$('btnReload').onclick = function(){ loadKeys(); loadLicenses(); };
+$('btnReload').onclick = function(){ loadKeys(); };
 $('btnEyeKeys').onclick = function(){ REVEAL = REVEAL ? 0 : 1; this.textContent = REVEAL ? '隐藏 Key' : '显示 Key'; loadKeys(); };
 $('btnEyeTok').onclick = function(){ var t = $('tok'); var hid = t.classList.toggle('dots'); this.textContent = hid ? '显示口令' : '隐藏口令'; };
 $('btnForget').onclick = function(){ localStorage.removeItem(ADM_TOK); localStorage.removeItem(KEY_TOK); TOK = ''; $('tok').value = ''; setConn(false, '未连接'); setMsg($('msgTop'), '已清除本机保存的口令', true); };
@@ -587,6 +600,153 @@ $('btnConn').onclick = conn;
 (function(){
   $('tok').value = TOK;
   if (TOK){ conn(); } else { setMsg($('msgTop'), '请填管理口令后点「连接」', null); }
+})();
+
+/* 【V1.0.0.966 用户要求】看 Key 弹窗：屏幕居中、鼠标左键可拖动到任意位置、右下角「复制」按钮 */
+var _cdxModalText = '';
+function showCodeModal(title, text){
+  _cdxModalText = String(text == null ? '' : text);
+  var m = document.getElementById('cdxModal');
+  var mk = document.getElementById('cdxMask');
+  document.getElementById('cdxModalTitle').textContent = title || '提示';
+  document.getElementById('cdxModalBody').textContent = _cdxModalText;
+  m.style.transform = 'translate(-50%,-50%)';
+  m.style.left = '50%'; m.style.top = '50%';
+  m.style.right = 'auto'; m.style.bottom = 'auto';
+  m.classList.add('on'); mk.classList.add('on');
+}
+function hideCodeModal(){
+  document.getElementById('cdxModal').classList.remove('on');
+  document.getElementById('cdxMask').classList.remove('on');
+}
+/* ===== 【用户要求】统一弹窗：屏幕正中显示 + 鼠标按住标题栏自由拖动到任意位置 ===== */
+var _cdxResolve = null, _cdxMode = 'confirm';
+function _cdxCfmOpen(o){
+  o = o || {};
+  var m = document.getElementById('cdxCfm'), mk = document.getElementById('cdxCfmMask');
+  _cdxMode = o.mode || 'confirm';
+  document.getElementById('cdxCfmTitle').textContent = o.title || (_cdxMode === 'prompt' ? '请输入' : (_cdxMode === 'alert' ? '提示' : '确认操作'));
+  document.getElementById('cdxCfmBody').textContent = String(o.text == null ? '' : o.text);
+  var wrap = document.getElementById('cdxCfmInputWrap'), inp = document.getElementById('cdxCfmInput');
+  if (_cdxMode === 'prompt'){ wrap.style.display = 'block'; inp.value = (o.value == null ? '' : String(o.value)); }
+  else { wrap.style.display = 'none'; inp.value = ''; }
+  document.getElementById('cdxCfmCancel').style.display = (_cdxMode === 'alert' ? 'none' : '');
+  m.style.right = 'auto'; m.style.bottom = 'auto';
+  m.style.transform = 'translate(-50%,-50%)';
+  m.style.left = '50%'; m.style.top = '50%';
+  m.classList.add('on'); mk.classList.add('on');
+  setTimeout(function(){ try { (_cdxMode === 'prompt' ? inp : document.getElementById('cdxCfmOk')).focus(); } catch(e){} }, 30);
+  return new Promise(function(res){ _cdxResolve = res; });
+}
+function _cdxCfmDone(v){
+  document.getElementById('cdxCfm').classList.remove('on');
+  document.getElementById('cdxCfmMask').classList.remove('on');
+  var r = _cdxResolve; _cdxResolve = null; if (r) r(v);
+}
+function _cdxCfmNo(){
+  _cdxCfmDone(_cdxMode === 'prompt' ? null : (_cdxMode === 'alert' ? true : false));
+}
+function cdxConfirm(text, title){ return _cdxCfmOpen({ mode: 'confirm', title: title, text: text }).then(function(v){ return v === true; }); }
+function cdxAlert(text, title){ return _cdxCfmOpen({ mode: 'alert', title: title, text: text }).then(function(){ return true; }); }
+function cdxPrompt(text, def, title){ return _cdxCfmOpen({ mode: 'prompt', title: title, text: text, value: def }); }
+window.cdxConfirm = cdxConfirm; window.cdxAlert = cdxAlert; window.cdxPrompt = cdxPrompt;
+(function(){
+  var m = document.getElementById('cdxCfm');
+  var head = document.getElementById('cdxCfmHead');
+  var mk = document.getElementById('cdxCfmMask');
+  var inp = document.getElementById('cdxCfmInput');
+  document.getElementById('cdxCfmOk').onclick = function(){ _cdxCfmDone(_cdxMode === 'prompt' ? inp.value : true); };
+  document.getElementById('cdxCfmCancel').onclick = _cdxCfmNo;
+  document.getElementById('cdxCfmClose').onclick = _cdxCfmNo;
+  mk.onclick = _cdxCfmNo;
+  inp.addEventListener('keydown', function(e){ if (e.key === 'Enter'){ e.preventDefault(); _cdxCfmDone(inp.value); } });
+  document.addEventListener('keydown', function(e){
+    if (!m.classList.contains('on')) return;
+    if (e.key === 'Escape') _cdxCfmNo();
+    else if (e.key === 'Enter' && _cdxMode !== 'prompt'){ e.preventDefault(); _cdxCfmDone(true); }
+  });
+  /* 鼠标按住标题栏，可拖到屏幕任意位置 */
+  var dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
+  head.addEventListener('mousedown', function(ev){
+    if (ev.button !== 0) return;
+    ev.preventDefault();
+    var r = m.getBoundingClientRect();
+    m.style.transform = 'none';
+    m.style.left = r.left + 'px'; m.style.top = r.top + 'px';
+    m.style.right = 'auto'; m.style.bottom = 'auto';
+    dragging = true; sx = ev.clientX; sy = ev.clientY; ox = r.left; oy = r.top;
+    document.body.style.userSelect = 'none';
+  });
+  document.addEventListener('mousemove', function(ev){
+    if (!dragging) return;
+    var nx = ox + (ev.clientX - sx), ny = oy + (ev.clientY - sy);
+    nx = Math.max(0, Math.min(nx, Math.max(0, window.innerWidth - m.offsetWidth)));
+    ny = Math.max(0, Math.min(ny, Math.max(0, window.innerHeight - m.offsetHeight)));
+    m.style.left = nx + 'px'; m.style.top = ny + 'px';
+  });
+  document.addEventListener('mouseup', function(){
+    if (!dragging) return;
+    dragging = false; document.body.style.userSelect = '';
+  });
+})();
+function cdxToast(t){
+  var e = document.getElementById('cdxToast');
+  if (!e) return;
+  e.textContent = t;
+  e.style.opacity = '1';
+  clearTimeout(e.__t);
+  e.__t = setTimeout(function(){ e.style.opacity = '0'; }, 1500);
+}
+function _cdxCopyDone(){ cdxToast('复制成功'); }
+function copyCodeModal(){
+  var txt = _cdxModalText;
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(_cdxCopyDone, function(){ _cdxFallbackCopy(txt); });
+  } else { _cdxFallbackCopy(txt); }
+}
+async function _cdxFallbackCopy(txt){
+  try{
+    var ta = document.createElement('textarea');
+    ta.value = txt; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    _cdxCopyDone();
+  }catch(e){ await cdxAlert('复制失败，请手动选中文字复制'); }
+}
+(function(){
+  var m = document.getElementById('cdxModal');
+  var head = document.getElementById('cdxModalHead');
+  var mk = document.getElementById('cdxMask');
+  document.getElementById('cdxModalClose').onclick = hideCodeModal;
+  document.getElementById('cdxModalOk').onclick = hideCodeModal;
+  document.getElementById('cdxModalCopy').onclick = copyCodeModal;
+  mk.onclick = hideCodeModal;
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') hideCodeModal(); });
+  var dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
+  head.addEventListener('mousedown', function(ev){
+    if (ev.button !== 0) return;
+    ev.preventDefault();
+    var r = m.getBoundingClientRect();
+    m.style.transform = 'none';
+    m.style.left = r.left + 'px';
+    m.style.top = r.top + 'px';
+    m.style.right = 'auto'; m.style.bottom = 'auto';
+    dragging = true; sx = ev.clientX; sy = ev.clientY; ox = r.left; oy = r.top;
+    document.body.style.userSelect = 'none';
+  });
+  document.addEventListener('mousemove', function(ev){
+    if (!dragging) return;
+    var nx = ox + (ev.clientX - sx), ny = oy + (ev.clientY - sy);
+    var maxX = Math.max(0, window.innerWidth - m.offsetWidth);
+    var maxY = Math.max(0, window.innerHeight - m.offsetHeight);
+    nx = Math.max(0, Math.min(nx, maxX));
+    ny = Math.max(0, Math.min(ny, maxY));
+    m.style.left = nx + 'px'; m.style.top = ny + 'px';
+  });
+  document.addEventListener('mouseup', function(){
+    if (!dragging) return;
+    dragging = false; document.body.style.userSelect = '';
+  });
 })();
 </script>
 </body>
